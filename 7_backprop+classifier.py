@@ -5,14 +5,23 @@ os.environ['MPLCONFIGDIR'] = "/scratch/space1/ic084/unlearning/Unlearning-Hackat
 import inspect
 from typing import Any, Callable, Dict, List, Optional, Union
 from tqdm.auto import tqdm
+from matplotlib import pyplot as plt
 
 import torch
 from diffusers import StableDiffusionPipeline
 from diffusers.utils.torch_utils import randn_tensor
+import torchvision
+from transformers import ViTImageProcessor, ViTForImageClassification
+
+
+model = ViTForImageClassification.from_pretrained('google/vit-base-patch16-224', cache_dir='./model/').to('cuda')
+atk_target = 123
+print("Attack target class:", model.config.id2label[atk_target])
+
 
 
 def get_model(model_id, device):
-    pipe = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=torch.bfloat16, cache_dir='./model/')
+    pipe = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=torch.float32, cache_dir='./model/')
     pipe.to(device)
     vae = pipe.vae
     unet = pipe.unet
@@ -45,7 +54,7 @@ def retrieve_timesteps(
 
 def forward(timesteps, num_inference_steps, scheduler, unet, vae, prompt_embeds, image_processor, output_type, latents):
     
-    for t in tqdm(timesteps):
+    for t in timesteps:
 
         latent_model_input = scheduler.scale_model_input(latents, t)
 
@@ -60,7 +69,7 @@ def forward(timesteps, num_inference_steps, scheduler, unet, vae, prompt_embeds,
         # compute the previous noisy sample x_t -> x_t-1
         latents = scheduler.step(noise_pred, t, latents, return_dict=False)[0]
 
-    latents = latents.to('cuda:0')
+    latents = latents.to('cpu')
     if not output_type == "latent":
         image = vae.decode(latents / vae.config.scaling_factor, return_dict=False)[
             0
@@ -76,25 +85,21 @@ def forward(timesteps, num_inference_steps, scheduler, unet, vae, prompt_embeds,
 
 
 def main():
+    tr = 11
     # model_id = "CompVis/stable-diffusion-v1-4"
     model_id = "OFA-Sys/small-stable-diffusion-v0"
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:0")
     vae, unet, image_processor, scheduler = get_model(model_id, device)
-    print(0)
-    prompt_embeds = torch.randn((1, 77, 768), device=device, dtype=torch.bfloat16)
+    
     height = 256
     width = 256
-    num_inference_steps = 50
-    timesteps = None
+    num_inference_steps = 2
+    
 
     vae_scale_factor = 2 ** (len(vae.config.block_out_channels) - 1)
     batch_size = 1
     num_images_per_prompt = 1
 
-    timesteps, num_inference_steps = retrieve_timesteps(
-        scheduler, num_inference_steps, device, timesteps
-    )
-    print(1)
     num_channels_latents = unet.config.in_channels
 
     shape = (
@@ -104,18 +109,66 @@ def main():
         int(width) // vae_scale_factor,
     )
 
+    prompt_embeds = torch.randn((1, 77, 768), device=device, dtype=torch.bfloat16)
     latents = randn_tensor(shape, device=device, dtype=prompt_embeds.dtype)
     latents.to(device)
-    latents = latents * scheduler.init_noise_sigma
+    latents.requires_grad=True
+    prompt_embeds.requires_grad=True
 
-
-    print(2)
+    optimizer = torch.optim.Adam([latents, prompt_embeds], lr=0.1)
+    # lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.5)
     
+    # targetImg = torch.load('output.pth').to(device)
+    for i in tqdm(range(10)):
+        timesteps = None
+        timesteps, num_inference_steps = retrieve_timesteps(
+            scheduler, num_inference_steps, device, timesteps
+        )
+        out = forward(timesteps, num_inference_steps, scheduler, unet, vae, prompt_embeds, image_processor, 'PIL.Image', latents)
+
+        im = out.to('cpu')
+        plt.imshow(im[0].float().detach().permute(1, 2, 0).numpy())
+        plt.savefig(f'ims/out{tr}_{i}.png')
+        
+        
+        
+        mean = [0.5, 0.5, 0.5]
+        std = [0.5, 0.5, 0.5]
+        normalizer = torchvision.transforms.Normalize(mean, std, inplace=False)
+        resizer = torchvision.transforms.Resize((224, 224))
+
+        inputs = normalizer(resizer(out))
+
+        outputs = model(inputs)
+        logits = outputs.logits[0]
+        # model predicts one of the 1000 ImageNet classes
+        predicted_class_idx = logits.argmax(-1).item()
+        print("Predicted class:", model.config.id2label[predicted_class_idx])
+        
+        logits_nt = torch.cat([logits[:atk_target], logits[atk_target+1:]])# non-target
+        loss = logits_nt.max() - logits[atk_target]
+        
+        
+        # loss = torch.nn.functional.mse_loss(out, targetImg)
+        # print(loss)
+
+        # oldLatents = latents.clone()
+        loss.backward()
+        optimizer.step()
+        # print(torch.nn.functional.mse_loss(oldLatents, latents))
+        optimizer.zero_grad()
+
+        tqdm.write(str(loss.item()))
+
+
+    timesteps = None
+    timesteps, num_inference_steps = retrieve_timesteps(
+        scheduler, num_inference_steps, device, timesteps
+    )
     out = forward(timesteps, num_inference_steps, scheduler, unet, vae, prompt_embeds, image_processor, 'PIL.Image', latents)
     
     
-    
-    torch.save(out, 'output.pth')
+    torch.save(out, f'output{tr}.pth')
     
     
 

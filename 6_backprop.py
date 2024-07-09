@@ -5,6 +5,7 @@ os.environ['MPLCONFIGDIR'] = "/scratch/space1/ic084/unlearning/Unlearning-Hackat
 import inspect
 from typing import Any, Callable, Dict, List, Optional, Union
 from tqdm.auto import tqdm
+from matplotlib import pyplot as plt
 
 import torch
 from diffusers import StableDiffusionPipeline
@@ -12,7 +13,7 @@ from diffusers.utils.torch_utils import randn_tensor
 
 
 def get_model(model_id, device):
-    pipe = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=torch.bfloat16, cache_dir='./model/')
+    pipe = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=torch.bfloat16, cache_dir='./model/', force_download=False)
     pipe.to(device)
     vae = pipe.vae
     unet = pipe.unet
@@ -45,7 +46,7 @@ def retrieve_timesteps(
 
 def forward(timesteps, num_inference_steps, scheduler, unet, vae, prompt_embeds, image_processor, output_type, latents):
     
-    for t in tqdm(timesteps):
+    for t in timesteps:
 
         latent_model_input = scheduler.scale_model_input(latents, t)
 
@@ -76,25 +77,21 @@ def forward(timesteps, num_inference_steps, scheduler, unet, vae, prompt_embeds,
 
 
 def main():
+    tr = 10
     # model_id = "CompVis/stable-diffusion-v1-4"
     model_id = "OFA-Sys/small-stable-diffusion-v0"
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     vae, unet, image_processor, scheduler = get_model(model_id, device)
-    print(0)
-    prompt_embeds = torch.randn((1, 77, 768), device=device, dtype=torch.bfloat16)
+    
     height = 256
     width = 256
     num_inference_steps = 50
-    timesteps = None
+    
 
     vae_scale_factor = 2 ** (len(vae.config.block_out_channels) - 1)
     batch_size = 1
     num_images_per_prompt = 1
 
-    timesteps, num_inference_steps = retrieve_timesteps(
-        scheduler, num_inference_steps, device, timesteps
-    )
-    print(1)
     num_channels_latents = unet.config.in_channels
 
     shape = (
@@ -104,18 +101,46 @@ def main():
         int(width) // vae_scale_factor,
     )
 
+    prompt_embeds = torch.randn((1, 77, 768), device=device, dtype=torch.bfloat16)
+    prompt_embeds.requires_grad = True
     latents = randn_tensor(shape, device=device, dtype=prompt_embeds.dtype)
+    latents.requires_grad = True
     latents.to(device)
-    latents = latents * scheduler.init_noise_sigma
 
-
-    print(2)
+    optimizer = torch.optim.AdamW([latents, prompt_embeds], lr=0.1)
+    # lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.5)
     
+    targetImg = torch.load('output.pth').to(device)
+
+    
+    
+    for i in tqdm(range(10)):
+        timesteps = None
+        timesteps, num_inference_steps = retrieve_timesteps(
+            scheduler, num_inference_steps, device, timesteps
+        )
+        out = forward(timesteps, num_inference_steps, scheduler, unet, vae, prompt_embeds, image_processor, 'PIL.Image', latents)
+
+        im = out.to('cpu')
+        plt.imshow(im[0].float().detach().permute(1, 2, 0).numpy())
+        plt.savefig(f'ims/out{tr}_{i}.png')
+        
+        loss = torch.nn.functional.mse_loss(out, targetImg)
+
+        loss.backward()
+        optimizer.step()
+        optimizer.zero_grad()
+        tqdm.write(str(loss.item()))
+
+
+    timesteps = None
+    timesteps, num_inference_steps = retrieve_timesteps(
+        scheduler, num_inference_steps, device, timesteps
+    )
     out = forward(timesteps, num_inference_steps, scheduler, unet, vae, prompt_embeds, image_processor, 'PIL.Image', latents)
     
     
-    
-    torch.save(out, 'output.pth')
+    torch.save(out, f'output{tr}.pth')
     
     
 
