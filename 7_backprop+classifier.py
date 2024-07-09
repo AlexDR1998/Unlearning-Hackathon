@@ -21,7 +21,7 @@ print("Attack target class:", model.config.id2label[atk_target])
 
 
 def get_model(model_id, device):
-    pipe = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=torch.float32, cache_dir='./model/')
+    pipe = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=torch.bfloat16, cache_dir='./model/')
     pipe.to(device)
     vae = pipe.vae
     unet = pipe.unet
@@ -69,7 +69,7 @@ def forward(timesteps, num_inference_steps, scheduler, unet, vae, prompt_embeds,
         # compute the previous noisy sample x_t -> x_t-1
         latents = scheduler.step(noise_pred, t, latents, return_dict=False)[0]
 
-    latents = latents.to('cpu')
+    latents = latents.to('cuda:0')
     if not output_type == "latent":
         image = vae.decode(latents / vae.config.scaling_factor, return_dict=False)[
             0
