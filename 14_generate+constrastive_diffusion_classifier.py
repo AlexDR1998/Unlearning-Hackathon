@@ -149,11 +149,11 @@ def suppress_stdout():
 
 
 def main():
-    tr = 49
+    tr = 50
     # atk_target = 293
     # model_id = "CompVis/stable-diffusion-v1-4"
     model_id = "OFA-Sys/small-stable-diffusion-v0"
-    classifier_id = 'google/vit-base-patch16-224'
+    # classifier_id = 'google/vit-base-patch16-224'
     device = 'cuda'
     batch_size = 1
     num_inference_steps = 10
@@ -183,7 +183,6 @@ def main():
     optimizer = torch.optim.Adam([prompt_embeds_org], lr=0.01)
 
     classifier_sample_number = 20
-    neg_classifier_sample_number = 20
     for i in tqdm(range(30)):
         prompt_embeds = prompt_embeds_org.repeat(batch_size, 1, 1)
         
@@ -212,12 +211,13 @@ def main():
         neg_noise_estimates = unet(noisy_latents, ts, 
                                    encoder_hidden_states = neg_target_prompt_embed.repeat(classifier_sample_number, 1, 1)
                                    ).sample
-        loss = F.mse_loss(noise_estimates, noise) - F.mse_loss(neg_noise_estimates, noise)
+        loss = F.mse_loss(noise_estimates, noise) - 10*F.mse_loss(neg_noise_estimates, noise)
         tqdm.write(f'Loss: {loss.item()}')
 
         loss.backward()
         torch.nn.utils.clip_grad_norm_(prompt_embeds_org, 0.1)
         # torch.nn.utils.clip_grad_norm_(latents, 0.1)
+        print(loss)
         optimizer.step()
         optimizer.zero_grad()
 

@@ -21,7 +21,7 @@ from transformers import ViTImageProcessor, ViTForImageClassification
 from diffuser_with_grad import *
 
 
-def get_model_full(model_id="OFA-Sys/small-stable-diffusion-v0", device="cuda",ftype=torch.bfloat16,local_files_only=False):
+def get_model_full(model_id="OFA-Sys/small-stable-diffusion-v0", device="cuda",ftype=torch.bfloat16,local_files_only=True):
     pipe = StableDiffusionPipeline.from_pretrained(model_id,
                                                    torch_dtype=ftype, 
                                                    cache_dir='./model/', 
@@ -72,7 +72,7 @@ def main():
     # model_id = "CompVis/stable-diffusion-v1-4"
     model_id = "OFA-Sys/small-stable-diffusion-v0"
     classifier_id = 'google/vit-base-patch16-224'
-    classifier_model = ViTForImageClassification.from_pretrained(model_id, torch_dtype=torch.bfloat16, cache_dir='./model/', local_files_only=False).to(device)
+    classifier_model = ViTForImageClassification.from_pretrained(model_id, torch_dtype=torch.bfloat16, cache_dir='./model/', local_files_only=True).to(device)
     device = 'cuda'
     batch_size = 1
     num_inference_steps = 20
