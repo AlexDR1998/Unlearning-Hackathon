@@ -11,6 +11,8 @@ import torch
 torch.set_default_dtype(torch.bfloat16)
 from diffusers import StableDiffusionPipeline
 
+from diffusers.optimization import get_cosine_schedule_with_warmup
+
 #from diffuser_classifier import *
 from packaging import version
 from transformers import CLIPImageProcessor, CLIPTextModel, CLIPTokenizer, CLIPVisionModelWithProjection
@@ -69,11 +71,11 @@ def predict_class(image,classifier_model):
 def main():
     tr = 3
     
-    filename= "joint_regularised_L1_dog_to_apple"
-    initial_prompt = 'photorealistic image of a dog'
-    random_start = True
+    filename= "joint_regularised_L1_cosine_schedule_banana_to_apple"
+    initial_prompt = 'photorealistic image of a banana'
+    random_start = False
     target_prompt = 'apple'
-    LEARN_RATE = 0.01
+    LEARN_RATE = 0.1
     ITERATIONS = 100
     atk_target = 948
     num_inference_steps = 20
@@ -112,6 +114,7 @@ def main():
     prompt_embeds_org.requires_grad = True
 
     optimizer = torch.optim.Adam([prompt_embeds_org], lr=LEARN_RATE)
+    lr_scheduler = get_cosine_schedule_with_warmup(optimizer, num_warmup_steps=3, num_training_steps=ITERATIONS)    
 
     classifier_sample_number = 20
     for i in tqdm(range(ITERATIONS)):
@@ -153,7 +156,7 @@ def main():
         # torch.nn.utils.clip_grad_norm_(latents, 0.1)
         optimizer.step()
         optimizer.zero_grad()
-
+        lr_scheduler.step()
     out = newPipe(prompt_embeds=prompt_embeds, latents=latents, num_inference_steps=num_inference_steps).images
     im = out.to('cpu')
     plt.imshow(im[0].float().detach().permute(1, 2, 0).numpy())
