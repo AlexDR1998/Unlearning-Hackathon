@@ -69,9 +69,9 @@ def predict_class(image,classifier_model):
 def main():
     tr = 3
     
-    filename= "joint_dog_to_apple"
+    filename= "joint_regularised_L1_dog_to_apple"
     initial_prompt = 'photorealistic image of a dog'
-    target_prompt = 'photorealistic image of a crisp and delicious green apple'
+    target_prompt = 'apple'
     LEARN_RATE = 0.01
     ITERATIONS = 100
     atk_target = 948
@@ -139,8 +139,11 @@ def main():
 
         noise_estimates = unet(noisy_latents, ts, encoder_hidden_states = target_prompt_embed.repeat(classifier_sample_number, 1, 1)).sample
         loss2 = 5 * F.mse_loss(noise_estimates, noise)
-        tqdm.write(f'Loss: {loss1.item()} + {loss2.item()} = {loss1.item() + loss2.item()}')
-        loss = loss1 + loss2
+
+        loss3 = torch.abs(torch.mean(torch.abs(prompt_embeds_org) - 0.78))
+
+        tqdm.write(f'Loss: {loss1.item()} + {loss2.item()} + {loss3.item()} = {loss1.item() + loss2.item() + loss3.item()}')
+        loss = loss1 + loss2 + loss3
         loss.backward()
         torch.nn.utils.clip_grad_norm_(prompt_embeds_org, 0.1)
         # torch.nn.utils.clip_grad_norm_(latents, 0.1)
