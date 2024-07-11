@@ -6,7 +6,7 @@ THIS IS UNFINISHED AND CURRENTLY ABANDONED, DUE TO A SIMPLER PIPELINE USED
 import os
 os.environ["HF_HOME"] = "/scratch/space1/ic084/unlearning/Unlearning-Hackathon/model"
 os.environ['MPLCONFIGDIR'] = "/scratch/space1/ic084/unlearning/Unlearning-Hackathon/model"
-
+import matplotlib.pyplot as plt
 import torch
 torch.set_default_dtype(torch.bfloat16)
 from diffusers import StableDiffusionPipeline
@@ -39,98 +39,7 @@ def get_model_full(model_id="OFA-Sys/small-stable-diffusion-v0", device="cuda",f
 ### Diffusion Classifier
 from tqdm import tqdm
 import torch.nn.functional as F
-# def eval_prob_adaptive(unet, latent, text_embeds, scheduler, args_batch_size,
-#                        latent_size=64, 
-#                        all_noise=None, args_dtype='bfloat16',
-#                        args_n_samples=[500]*5,
-#                        topk_to_keep=[10]*5,
-#                        args_n_trials=5,
-#                        args_version='1-4', #TODO: NOT TRUE
-#                        args_loss='l2'
-#                        ):
-    
-#     scheduler_config = get_scheduler_config(args_version)
-#     T = scheduler_config['num_train_timesteps']
-#     max_n_samples = max(args_n_samples)
 
-#     # if all_noise is None:
-#     #     all_noise = torch.randn((max_n_samples * args.n_trials, 4, latent_size, latent_size), device=latent.device)
-#     # if args.dtype == 'float16':
-#     #     all_noise = all_noise.half()
-#     #     scheduler.alphas_cumprod = scheduler.alphas_cumprod.half()
-        
-#     all_noise = torch.randn((max_n_samples * args_n_trials, 4, latent_size, latent_size), device=latent.device, dtype=args_dtype)
-
-#     data = dict()
-#     t_evaluated = set()
-#     remaining_prmpt_idxs = list(range(len(text_embeds)))
-#     start = T // max_n_samples // 2
-#     t_to_eval = list(range(start, T, T // max_n_samples))[:max_n_samples]
-
-#     for n_samples, n_to_keep in zip(args_n_samples, topk_to_keep):
-#         ts = []
-#         noise_idxs = []
-#         text_embed_idxs = []
-#         curr_t_to_eval = t_to_eval[len(t_to_eval) // n_samples // 2::len(t_to_eval) // n_samples][:n_samples]
-#         curr_t_to_eval = [t for t in curr_t_to_eval if t not in t_evaluated]
-#         for prompt_i in remaining_prmpt_idxs:
-#             for t_idx, t in enumerate(curr_t_to_eval, start=len(t_evaluated)):
-#                 ts.extend([t] * args_n_trials)
-#                 noise_idxs.extend(list(range(args_n_trials * t_idx, args_n_trials * (t_idx + 1))))
-#                 text_embed_idxs.extend([prompt_i] * args_n_trials)
-#         t_evaluated.update(curr_t_to_eval)
-#         pred_errors = eval_error(unet, scheduler, latent, all_noise, ts, noise_idxs, 
-#                                  text_embeds, text_embed_idxs, args_batch_size, args_dtype, args_loss,
-#                                  device=latent.device
-#                                  )
-#         # match up computed errors to the data
-#         for prompt_i in remaining_prmpt_idxs:
-#             mask = torch.tensor(text_embed_idxs) == prompt_i
-#             prompt_ts = torch.tensor(ts)[mask]
-#             prompt_pred_errors = pred_errors[mask]
-#             if prompt_i not in data:
-#                 data[prompt_i] = dict(t=prompt_ts, pred_errors=prompt_pred_errors)
-#             else:
-#                 data[prompt_i]['t'] = torch.cat([data[prompt_i]['t'], prompt_ts])
-#                 data[prompt_i]['pred_errors'] = torch.cat([data[prompt_i]['pred_errors'], prompt_pred_errors])
-
-#         # compute the next remaining idxs
-#         errors = [-data[prompt_i]['pred_errors'].mean() for prompt_i in remaining_prmpt_idxs]
-#         best_idxs = torch.topk(torch.tensor(errors), k=n_to_keep, dim=0).indices.tolist()
-#         remaining_prmpt_idxs = [remaining_prmpt_idxs[i] for i in best_idxs]
-
-#     # organize the output
-#     assert len(remaining_prmpt_idxs) == 1
-#     pred_idx = remaining_prmpt_idxs[0]
-
-#     return pred_idx, data
-
-
-# def eval_error(unet, scheduler, latent, all_noise, ts, noise_idxs, device,
-#                text_embeds, text_embed_idxs, batch_size=32, dtype='float32', loss='l2'):
-#     assert len(ts) == len(noise_idxs) == len(text_embed_idxs)
-#     pred_errors = torch.zeros(len(ts), device='cpu')
-#     idx = 0
-#     with torch.inference_mode():
-#         for _ in tqdm.trange(len(ts) // batch_size + int(len(ts) % batch_size != 0), leave=False):
-#             batch_ts = torch.tensor(ts[idx: idx + batch_size])
-#             noise = all_noise[noise_idxs[idx: idx + batch_size]]
-#             noised_latent = latent * (scheduler.alphas_cumprod[batch_ts] ** 0.5).view(-1, 1, 1, 1).to(device) + \
-#                             noise * ((1 - scheduler.alphas_cumprod[batch_ts]) ** 0.5).view(-1, 1, 1, 1).to(device)
-#             t_input = batch_ts.to(device).half() if dtype == 'float16' else batch_ts.to(device)
-#             text_input = text_embeds[text_embed_idxs[idx: idx + batch_size]]
-#             noise_pred = unet(noised_latent, t_input, encoder_hidden_states=text_input).sample
-#             if loss == 'l2':
-#                 error = F.mse_loss(noise, noise_pred, reduction='none').mean(dim=(1, 2, 3))
-#             elif loss == 'l1':
-#                 error = F.l1_loss(noise, noise_pred, reduction='none').mean(dim=(1, 2, 3))
-#             elif loss == 'huber':
-#                 error = F.huber_loss(noise, noise_pred, reduction='none').mean(dim=(1, 2, 3))
-#             else:
-#                 raise NotImplementedError
-#             pred_errors[idx: idx + len(batch_ts)] = error.detach().cpu()
-#             idx += len(batch_ts)
-#     return pred_errors
 ###
 import sys
 import os
@@ -157,10 +66,10 @@ def main():
     classifier_id = 'google/vit-base-patch16-224'
     device = 'cuda'
     batch_size = 1
-    num_inference_steps = 10
+    num_inference_steps = 50
     vae, unet, image_processor, scheduler, pipe = get_model_full(model_id, device)
 
-    target_prompt = 'apple, 4k'
+    target_prompt = 'oil painting of an apple'
     target_prompt_embed = pipe.encode_prompt(target_prompt, device, 1, False)[0].detach()
 
     # classifier_model = get_classifier(classifier_id)
@@ -170,12 +79,12 @@ def main():
     newPipe = OurPipe(pipe.vae, pipe.text_encoder, pipe.tokenizer, pipe.unet, pipe.scheduler, pipe.safety_checker, pipe.feature_extractor, pipe.image_encoder, requires_safety_checker=False)
 
     vae_scale_factor = 2 ** (len(vae.config.block_out_channels) - 1)
-    height = 512//2
-    width = 512//2
+    height = 512
+    width = 512
     shape = (1, unet.config.in_channels, int(height) // vae_scale_factor, int(width) // vae_scale_factor)
     
     latents = randn_tensor(shape, generator=None, device=device, dtype=torch.bfloat16)
-    prompt_embeds_org = pipe.encode_prompt('apple, 4k', device, 1, False)[0].detach()
+    prompt_embeds_org = pipe.encode_prompt('photorealistic image of an apple', device, 1, False)[0].detach() # Initial prompt
     # latents.requires_grad = True
     prompt_embeds_org.requires_grad = True
 
