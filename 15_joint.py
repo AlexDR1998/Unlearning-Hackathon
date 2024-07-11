@@ -75,7 +75,7 @@ def main():
     initial_prompt = 'photorealistic image of a banana'
     random_start = False
     target_prompt = 'apple'
-    LEARN_RATE = 0.1
+    LEARN_RATE = 0.05
     ITERATIONS = 30
     atk_target = 948
     num_inference_steps = 30
