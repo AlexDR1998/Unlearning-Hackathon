@@ -17,7 +17,6 @@ from transformers import CLIPImageProcessor, CLIPTextModel, CLIPTokenizer, CLIPV
 
 from matplotlib import pyplot as plt
 
-from diffuser_classifier import get_classifier,predict_class
 from diffuser_with_grad import *
 
 
@@ -150,7 +149,7 @@ def suppress_stdout():
 
 
 def main():
-    tr = 44
+    tr = 49
     # atk_target = 293
     # model_id = "CompVis/stable-diffusion-v1-4"
     model_id = "OFA-Sys/small-stable-diffusion-v0"
@@ -172,8 +171,8 @@ def main():
     newPipe = OurPipe(pipe.vae, pipe.text_encoder, pipe.tokenizer, pipe.unet, pipe.scheduler, pipe.safety_checker, pipe.feature_extractor, pipe.image_encoder, requires_safety_checker=False)
 
     vae_scale_factor = 2 ** (len(vae.config.block_out_channels) - 1)
-    height = 512//2
-    width = 512//2
+    height = 512
+    width = 512
     shape = (1, unet.config.in_channels, int(height) // vae_scale_factor, int(width) // vae_scale_factor)
     
     latents = randn_tensor(shape, generator=None, device=device, dtype=torch.bfloat16)
