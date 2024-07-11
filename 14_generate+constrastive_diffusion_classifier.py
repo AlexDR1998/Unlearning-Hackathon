@@ -149,19 +149,20 @@ def suppress_stdout():
 
 
 def main():
-    tr = 50
-    # atk_target = 293
-    # model_id = "CompVis/stable-diffusion-v1-4"
-    model_id = "OFA-Sys/small-stable-diffusion-v0"
+    tr = 1
+    filename = "contrastive_apple"
+    neg_target_prompt = 'empty, blank, simple, single color, lacking'
+    target_prompt = 'apple, 4k'
+    ITERATIONS = 30
+    num_inference_steps = 10
+    
     # classifier_id = 'google/vit-base-patch16-224'
+    model_id = "OFA-Sys/small-stable-diffusion-v0"
     device = 'cuda'
     batch_size = 1
-    num_inference_steps = 10
     vae, unet, image_processor, scheduler, pipe = get_model_full(model_id, device)
 
-    target_prompt = 'apple, 4k'
     target_prompt_embed = pipe.encode_prompt(target_prompt, device, 1, False)[0].detach()
-    neg_target_prompt = 'empty, blank, simple, single color, lacking'
     neg_target_prompt_embed = pipe.encode_prompt(neg_target_prompt, device, 1, False)[0].detach()
     
     # classifier_model = get_classifier(classifier_id)
@@ -182,8 +183,8 @@ def main():
 
     optimizer = torch.optim.Adam([prompt_embeds_org], lr=0.01)
 
-    classifier_sample_number = 20
-    for i in tqdm(range(30)):
+    classifier_sample_number = 5
+    for i in tqdm(range(ITERATIONS)):
         prompt_embeds = prompt_embeds_org.repeat(batch_size, 1, 1)
         
         with suppress_stdout():
@@ -194,7 +195,8 @@ def main():
         im = im.clamp(0, 1)
         # tqdm.write(f'im range: {im.min()}, {im.max()}')
         plt.imshow(im[0].float().detach().permute(1, 2, 0).numpy())
-        plt.savefig(f'ims/out{tr}_{i}.png')
+        plt.axis('off')
+        plt.savefig(f'ims/out_{filename}_{tr}_{i}.png', bbox_inches='tight', pad_inches=0)
 
         noise = torch.randn((classifier_sample_number,*latents.shape[1:]), device=device, dtype=torch.bfloat16)
         
@@ -211,7 +213,7 @@ def main():
         neg_noise_estimates = unet(noisy_latents, ts, 
                                    encoder_hidden_states = neg_target_prompt_embed.repeat(classifier_sample_number, 1, 1)
                                    ).sample
-        loss = F.mse_loss(noise_estimates, noise) - 10*F.mse_loss(neg_noise_estimates, noise)
+        loss = F.mse_loss(noise_estimates, noise) - 2*F.mse_loss(neg_noise_estimates, noise)
         tqdm.write(f'Loss: {loss.item()}')
 
         loss.backward()
@@ -224,7 +226,8 @@ def main():
     out = newPipe(prompt_embeds=prompt_embeds, latents=latents, num_inference_steps=num_inference_steps).images
     im = out.to('cpu')
     plt.imshow(im[0].float().detach().permute(1, 2, 0).numpy())
-    plt.savefig(f'ims/out{tr}_final.png')
+    plt.axis('off')
+    plt.savefig(f'ims/out_{filename}_{tr}_final.png', bbox_inches='tight', pad_inches=0)
     
     
 
