@@ -72,6 +72,7 @@ def main():
     # model_id = "CompVis/stable-diffusion-v1-4"
     model_id = "OFA-Sys/small-stable-diffusion-v0"
     classifier_id = 'google/vit-base-patch16-224'
+    filename = "vit_only_pear_to_apple"
     classifier_model = ViTForImageClassification.from_pretrained(classifier_id, torch_dtype=torch.bfloat16, cache_dir='./model/', local_files_only=False).to('cuda')
     device = 'cuda'
     batch_size = 1
@@ -81,7 +82,7 @@ def main():
     target_prompt = 'photorealistic image of a crisp and delicious green apple'
     atk_target = 948
 
-    initial_prompt = 'Red apple'
+    initial_prompt = 'green pear'
 
 
     target_prompt_embed = pipe.encode_prompt(target_prompt, device, 1, False)[0].detach()
@@ -117,7 +118,7 @@ def main():
         im = im.clamp(0, 1)
         # tqdm.write(f'im range: {im.min()}, {im.max()}')
         plt.imshow(im[0].float().detach().permute(1, 2, 0).numpy())
-        plt.savefig(f'ims/out_vit_only_apple_{tr}_{i}.png')
+        plt.savefig(f'ims/out_{filename}_{tr}_{i}.png')
         prediction = predict_class(outVae,classifier_model)
         logits = prediction.logits
         loss1 = torch.nn.functional.cross_entropy(logits, torch.tensor(batch_size * [atk_target]).to(device), reduction='mean')
@@ -144,7 +145,7 @@ def main():
     out = newPipe(prompt_embeds=prompt_embeds, latents=latents, num_inference_steps=num_inference_steps).images
     im = out.to('cpu')
     plt.imshow(im[0].float().detach().permute(1, 2, 0).numpy())
-    plt.savefig(f'ims/out_vit_only_apple_{tr}_final.png')
+    plt.savefig(f'ims/out_{filename}_{tr}_final.png')
     
     
 
