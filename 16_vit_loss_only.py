@@ -68,21 +68,21 @@ def predict_class(image,classifier_model):
 
 def main():
     tr = 1
-    # atk_target = 293
-    # model_id = "CompVis/stable-diffusion-v1-4"
-    model_id = "OFA-Sys/small-stable-diffusion-v0"
+    filename = "vit_only_dog_to_apple"
+    target_prompt = 'photorealistic image of a crisp and delicious green apple'
+    initial_prompt = 'photorealistic dog'
+    atk_target = 948 #Granny smith
+    
+    
     classifier_id = 'google/vit-base-patch16-224'
-    filename = "vit_only_pear_to_apple"
+    model_id = "OFA-Sys/small-stable-diffusion-v0"
     classifier_model = ViTForImageClassification.from_pretrained(classifier_id, torch_dtype=torch.bfloat16, cache_dir='./model/', local_files_only=False).to('cuda')
     device = 'cuda'
     batch_size = 1
     num_inference_steps = 20
     vae, unet, image_processor, scheduler, pipe = get_model_full(model_id, device)
 
-    target_prompt = 'photorealistic image of a crisp and delicious green apple'
-    atk_target = 948
 
-    initial_prompt = 'green pear'
 
 
     target_prompt_embed = pipe.encode_prompt(target_prompt, device, 1, False)[0].detach()
