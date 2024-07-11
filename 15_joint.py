@@ -67,10 +67,10 @@ def predict_class(image,classifier_model):
 
 
 def main():
-    tr = 48
+    tr = 3
     
     filename= "joint_dog_to_apple"
-    initial_prompt = 'Red apple'
+    initial_prompt = 'photorealistic image of a dog'
     target_prompt = 'photorealistic image of a crisp and delicious green apple'
     LEARN_RATE = 0.01
     ITERATIONS = 100
