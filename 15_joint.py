@@ -69,16 +69,16 @@ def predict_class(image,classifier_model):
 
 
 def main():
-    tr = 3
+    tr = 4
     
-    filename= "joint_regularised_L1_cosine_schedule_banana_to_apple"
+    filename= "joint_regularised_L1_cosine_schedule_NAdam_banana_to_apple"
     initial_prompt = 'photorealistic image of a banana'
     random_start = False
     target_prompt = 'apple'
     LEARN_RATE = 0.1
-    ITERATIONS = 100
+    ITERATIONS = 30
     atk_target = 948
-    num_inference_steps = 20
+    num_inference_steps = 30
     
     
     
@@ -113,7 +113,7 @@ def main():
     # latents.requires_grad = True
     prompt_embeds_org.requires_grad = True
 
-    optimizer = torch.optim.Adam([prompt_embeds_org], lr=LEARN_RATE)
+    optimizer = torch.optim.NAdam([prompt_embeds_org], lr=LEARN_RATE)
     lr_scheduler = get_cosine_schedule_with_warmup(optimizer, num_warmup_steps=3, num_training_steps=ITERATIONS)    
 
     classifier_sample_number = 20
