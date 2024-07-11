@@ -68,8 +68,14 @@ def predict_class(image,classifier_model):
 
 def main():
     tr = 48
-    # atk_target = 293
-    # model_id = "CompVis/stable-diffusion-v1-4"
+    
+    filename= "joint_dog_to_apple"
+    initial_prompt = 'Red apple'
+    target_prompt = 'photorealistic image of a crisp and delicious green apple'
+    atk_target = 948
+    
+    
+    
     model_id = "OFA-Sys/small-stable-diffusion-v0"
     classifier_id = 'google/vit-base-patch16-224'
     classifier_model = ViTForImageClassification.from_pretrained(classifier_id, torch_dtype=torch.bfloat16, cache_dir='./model/', local_files_only=False).to('cuda')
@@ -78,10 +84,7 @@ def main():
     num_inference_steps = 20
     vae, unet, image_processor, scheduler, pipe = get_model_full(model_id, device)
 
-    target_prompt = 'photorealistic image of a crisp and delicious green apple'
-    atk_target = 948
 
-    initial_prompt = 'Red apple'
 
 
     target_prompt_embed = pipe.encode_prompt(target_prompt, device, 1, False)[0].detach()
@@ -102,7 +105,7 @@ def main():
     # latents.requires_grad = True
     prompt_embeds_org.requires_grad = True
 
-    optimizer = torch.optim.Adam([prompt_embeds_org], lr=0.01)
+    optimizer = torch.optim.Adam([prompt_embeds_org], lr=0.1)
 
     classifier_sample_number = 20
     for i in tqdm(range(30)):
@@ -117,7 +120,8 @@ def main():
         im = im.clamp(0, 1)
         # tqdm.write(f'im range: {im.min()}, {im.max()}')
         plt.imshow(im[0].float().detach().permute(1, 2, 0).numpy())
-        plt.savefig(f'ims/out{tr}_{i}.png')
+        plt.axis('off')
+        plt.savefig(f'ims/out_{filename}_{tr}_{i}.png', bbox_inches='tight', pad_inches=0)
         prediction = predict_class(outVae,classifier_model)
         logits = prediction.logits
         loss1 = torch.nn.functional.cross_entropy(logits, torch.tensor(batch_size * [atk_target]).to(device), reduction='mean')
@@ -144,7 +148,8 @@ def main():
     out = newPipe(prompt_embeds=prompt_embeds, latents=latents, num_inference_steps=num_inference_steps).images
     im = out.to('cpu')
     plt.imshow(im[0].float().detach().permute(1, 2, 0).numpy())
-    plt.savefig(f'ims/out{tr}_final.png')
+    plt.axis('off')
+    plt.savefig(f'ims/out_{filename}_{tr}_final.png', bbox_inches='tight', pad_inches=0)
     
     
 
