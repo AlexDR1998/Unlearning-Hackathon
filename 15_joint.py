@@ -72,6 +72,7 @@ def main():
     filename= "joint_dog_to_apple"
     initial_prompt = 'Red apple'
     target_prompt = 'photorealistic image of a crisp and delicious green apple'
+    LEARN_RATE = 0.01
     atk_target = 948
     
     
@@ -105,7 +106,7 @@ def main():
     # latents.requires_grad = True
     prompt_embeds_org.requires_grad = True
 
-    optimizer = torch.optim.Adam([prompt_embeds_org], lr=0.1)
+    optimizer = torch.optim.Adam([prompt_embeds_org], lr=LEARN_RATE)
 
     classifier_sample_number = 20
     for i in tqdm(range(30)):
