@@ -71,6 +71,7 @@ def main():
     
     filename= "joint_regularised_L1_dog_to_apple"
     initial_prompt = 'photorealistic image of a dog'
+    random_start = True
     target_prompt = 'apple'
     LEARN_RATE = 0.01
     ITERATIONS = 100
@@ -103,7 +104,10 @@ def main():
     shape = (1, unet.config.in_channels, int(height) // vae_scale_factor, int(width) // vae_scale_factor)
     
     latents = randn_tensor(shape, generator=None, device=device, dtype=torch.bfloat16)
-    prompt_embeds_org = pipe.encode_prompt(initial_prompt, device, 1, False)[0].detach() # Initial prompt
+    if random_start:
+        prompt_embeds_org = torch.randn((1, 77, 768), device=device, dtype=torch.bfloat16)
+    else:
+        prompt_embeds_org = pipe.encode_prompt(initial_prompt, device, 1, False)[0].detach() # Initial prompt
     # latents.requires_grad = True
     prompt_embeds_org.requires_grad = True
 
