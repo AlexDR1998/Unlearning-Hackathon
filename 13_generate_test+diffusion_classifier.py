@@ -11,21 +11,21 @@ import torch
 torch.set_default_dtype(torch.bfloat16)
 from diffusers import StableDiffusionPipeline
 
-from diffuser_classifier import *
+#from diffuser_classifier import *
 from packaging import version
 from transformers import CLIPImageProcessor, CLIPTextModel, CLIPTokenizer, CLIPVisionModelWithProjection
 
 
 
-from diffuser_classifier import get_classifier,predict_class
+#from diffuser_classifier import get_classifier,predict_class
 from diffuser_with_grad import *
 
 
-def get_model_full(model_id="OFA-Sys/small-stable-diffusion-v0", device="cuda",ftype=torch.bfloat16):
+def get_model_full(model_id="OFA-Sys/small-stable-diffusion-v0", device="cuda",ftype=torch.bfloat16,local_files_only=False):
     pipe = StableDiffusionPipeline.from_pretrained(model_id,
                                                    torch_dtype=ftype, 
                                                    cache_dir='./model/', 
-                                                   local_files_only=True
+                                                   local_files_only=local_files_only
                                                    )
     pipe.to(device)
     vae = pipe.vae
