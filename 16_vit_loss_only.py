@@ -118,7 +118,8 @@ def main():
         im = im.clamp(0, 1)
         # tqdm.write(f'im range: {im.min()}, {im.max()}')
         plt.imshow(im[0].float().detach().permute(1, 2, 0).numpy())
-        plt.savefig(f'ims/out_{filename}_{tr}_{i}.png')
+        plt.axis('off')
+        plt.savefig(f'ims/out_{filename}_{tr}_{i}.png', bbox_inches='tight', pad_inches=0)
         prediction = predict_class(outVae,classifier_model)
         logits = prediction.logits
         loss1 = torch.nn.functional.cross_entropy(logits, torch.tensor(batch_size * [atk_target]).to(device), reduction='mean')
