@@ -67,7 +67,7 @@ def predict_class(image,classifier_model):
 
 
 def main():
-    tr = 48
+    tr = 1
     # atk_target = 293
     # model_id = "CompVis/stable-diffusion-v1-4"
     model_id = "OFA-Sys/small-stable-diffusion-v0"
@@ -117,7 +117,7 @@ def main():
         im = im.clamp(0, 1)
         # tqdm.write(f'im range: {im.min()}, {im.max()}')
         plt.imshow(im[0].float().detach().permute(1, 2, 0).numpy())
-        plt.savefig(f'ims/out{tr}_{i}.png')
+        plt.savefig(f'ims/out_vit_only_apple_{tr}_{i}.png')
         prediction = predict_class(outVae,classifier_model)
         logits = prediction.logits
         loss1 = torch.nn.functional.cross_entropy(logits, torch.tensor(batch_size * [atk_target]).to(device), reduction='mean')
@@ -144,7 +144,7 @@ def main():
     out = newPipe(prompt_embeds=prompt_embeds, latents=latents, num_inference_steps=num_inference_steps).images
     im = out.to('cpu')
     plt.imshow(im[0].float().detach().permute(1, 2, 0).numpy())
-    plt.savefig(f'ims/out{tr}_final.png')
+    plt.savefig(f'ims/out_vit_only_apple_{tr}_final.png')
     
     
 
