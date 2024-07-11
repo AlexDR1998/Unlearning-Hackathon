@@ -73,7 +73,9 @@ def main():
     initial_prompt = 'Red apple'
     target_prompt = 'photorealistic image of a crisp and delicious green apple'
     LEARN_RATE = 0.01
+    ITERATIONS = 100
     atk_target = 948
+    num_inference_steps = 20
     
     
     
@@ -82,7 +84,6 @@ def main():
     classifier_model = ViTForImageClassification.from_pretrained(classifier_id, torch_dtype=torch.bfloat16, cache_dir='./model/', local_files_only=False).to('cuda')
     device = 'cuda'
     batch_size = 1
-    num_inference_steps = 20
     vae, unet, image_processor, scheduler, pipe = get_model_full(model_id, device)
 
 
@@ -109,7 +110,7 @@ def main():
     optimizer = torch.optim.Adam([prompt_embeds_org], lr=LEARN_RATE)
 
     classifier_sample_number = 20
-    for i in tqdm(range(30)):
+    for i in tqdm(range(ITERATIONS)):
         prompt_embeds = prompt_embeds_org.repeat(batch_size, 1, 1)
         
         with suppress_stdout():
