@@ -59,17 +59,17 @@ def suppress_stdout():
 
 
 def main():
-    tr = 44
+    tr = 47
     # atk_target = 293
     # model_id = "CompVis/stable-diffusion-v1-4"
     model_id = "OFA-Sys/small-stable-diffusion-v0"
     classifier_id = 'google/vit-base-patch16-224'
     device = 'cuda'
     batch_size = 1
-    num_inference_steps = 50
+    num_inference_steps = 20
     vae, unet, image_processor, scheduler, pipe = get_model_full(model_id, device)
 
-    target_prompt = 'oil painting of an apple'
+    target_prompt = 'photorealistic image of a crisp and delicious apple'
     target_prompt_embed = pipe.encode_prompt(target_prompt, device, 1, False)[0].detach()
 
     # classifier_model = get_classifier(classifier_id)
@@ -84,7 +84,7 @@ def main():
     shape = (1, unet.config.in_channels, int(height) // vae_scale_factor, int(width) // vae_scale_factor)
     
     latents = randn_tensor(shape, generator=None, device=device, dtype=torch.bfloat16)
-    prompt_embeds_org = pipe.encode_prompt('photorealistic image of an apple', device, 1, False)[0].detach() # Initial prompt
+    prompt_embeds_org = pipe.encode_prompt('simple apple painting', device, 1, False)[0].detach() # Initial prompt
     # latents.requires_grad = True
     prompt_embeds_org.requires_grad = True
 
