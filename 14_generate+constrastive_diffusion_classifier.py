@@ -177,13 +177,13 @@ def main():
     shape = (1, unet.config.in_channels, int(height) // vae_scale_factor, int(width) // vae_scale_factor)
     
     latents = randn_tensor(shape, generator=None, device=device, dtype=torch.bfloat16)
-    prompt_embeds_org = pipe.encode_prompt('apple, 4k', device, 1, False)[0].detach()
+    prompt_embeds_org = pipe.encode_prompt('banana, 4k', device, 1, False)[0].detach()
     # latents.requires_grad = True
     prompt_embeds_org.requires_grad = True
 
-    optimizer = torch.optim.Adam([prompt_embeds_org], lr=0.01)
+    optimizer = torch.optim.NAdam([prompt_embeds_org], lr=0.01)
 
-    classifier_sample_number = 5
+    classifier_sample_number = 10
     for i in tqdm(range(ITERATIONS)):
         prompt_embeds = prompt_embeds_org.repeat(batch_size, 1, 1)
         
