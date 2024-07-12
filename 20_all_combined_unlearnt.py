@@ -92,7 +92,7 @@ def main():
     initial_prompt = 'dog'
     random_start = False
     target_prompt = 'dog'
-    LEARN_RATE = 0.1
+    LEARN_RATE = 0.03
     ITERATIONS = 30
     atk_targets = [160, 193, 181, 239, 156, 232, 182, 195, 233, 215, 151, 236, 167, 217, 248, 245, 235, 210, 246, 257, 238, 173, 213, 184, 221, 170, 171, 152, 183, 208, 189, 255, 204, 153, 268, 256, 185, 174, 186, 229, 154, 263, 259, 234, 247, 176, 258, 199, 177, 190, 230, 155, 250, 179, 220, 244, 200, 166, 178, 218, 203, 187]
     num_inference_steps = 20
@@ -123,7 +123,7 @@ def main():
     if random_start:
         prompt_embeds_org = torch.randn((1, 77, 768), device=device, dtype=torch.bfloat16)
     else:
-        prompt_embeds_org = pipe.encode_prompt(initial_prompt, device, 1, False)[0].detach() # Initial prompt
+        prompt_embeds_org = upipe.encode_prompt(initial_prompt, device, 1, False)[0].detach() # Initial prompt
     # latents.requires_grad = True
     prompt_embeds_org.requires_grad = True
 
