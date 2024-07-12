@@ -16,19 +16,19 @@ from diffuser_with_grad import *
 
 
 def get_model_full(model_id="OFA-Sys/small-stable-diffusion-v0", device="cuda",ftype=torch.bfloat16):
-    # pipe = StableDiffusionPipeline.from_pretrained(model_id,
-    #                                                torch_dtype=ftype, 
-    #                                                cache_dir='./model/', 
-    #                                                local_files_only=True
-    #                                                )
-    model_path = "./unlearnt_model/snapshots/38e10e5e71e8fbf717a47a81e7543cd01c1a8140"
-    pipe = StableDiffusionPipeline.from_pretrained(model_path,
-                                                   torch_dtype=ftype,
-                                                   use_safetensors=False,
-                                                   safety_checker=None,
-                                                   requires_safety_checker=False,
-                                                   local_files_only=True,
+    pipe = StableDiffusionPipeline.from_pretrained(model_id,
+                                                   torch_dtype=ftype, 
+                                                   cache_dir='./model/', 
+                                                   local_files_only=True
                                                    )
+    model_path = "./unlearnt_model/snapshots/38e10e5e71e8fbf717a47a81e7543cd01c1a8140"
+    # pipe = StableDiffusionPipeline.from_pretrained(model_path,
+    #                                                torch_dtype=ftype,
+    #                                                use_safetensors=False,
+    #                                                safety_checker=None,
+    #                                                requires_safety_checker=False,
+    #                                                local_files_only=True,
+    #                                                )
     pipe.to(device)
     vae = pipe.vae
     unet = pipe.unet
@@ -154,9 +154,10 @@ def suppress_stdout():
 
 def main():
     tr = 1
-    filename = "contrastive_dog_unlearnt"
+    filename = "contrastive_dog_to_table"
     neg_target_prompt = 'empty, blank, simple, single color, blurry'
     target_prompt = 'dog'
+    initial_prompt = "table"
     ITERATIONS = 30
     num_inference_steps = 10
     
@@ -181,7 +182,7 @@ def main():
     shape = (1, unet.config.in_channels, int(height) // vae_scale_factor, int(width) // vae_scale_factor)
     
     latents = randn_tensor(shape, generator=None, device=device, dtype=torch.bfloat16)
-    prompt_embeds_org = pipe.encode_prompt('dog', device, 1, False)[0].detach()
+    prompt_embeds_org = pipe.encode_prompt(initial_prompt, device, 1, False)[0].detach()
     # latents.requires_grad = True
     prompt_embeds_org.requires_grad = True
 
