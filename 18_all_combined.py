@@ -69,14 +69,14 @@ def predict_class(image,classifier_model):
 
 
 def main():
-    tr = 1
+    tr = 2
     
     filename= "combined_techniques_table_to_dog"
     neg_target_prompt = 'empty, blank, simple, single color, blurry, low quality'
     initial_prompt = 'photorealistic image of a table'
     random_start = False
     target_prompt = 'dog'
-    LEARN_RATE = 0.05
+    LEARN_RATE = 0.1
     ITERATIONS = 30
     atk_targets = [160, 193, 181, 239, 156, 232, 182, 195, 233, 215, 151, 236, 167, 217, 248, 245, 235, 210, 246, 257, 238, 173, 213, 184, 221, 170, 171, 152, 183, 208, 189, 255, 204, 153, 268, 256, 185, 174, 186, 229, 154, 263, 259, 234, 247, 176, 258, 199, 177, 190, 230, 155, 250, 179, 220, 244, 200, 166, 178, 218, 203, 187]
     num_inference_steps = 20
@@ -152,7 +152,7 @@ def main():
         tqdm.write(f'Loss: {loss1.item()} + {loss2.item()} + {loss3.item()} + {loss4.item()} = {loss1.item() + loss2.item() + loss3.item() + loss4.item()}')
         loss = loss1 + loss2 + loss3 + loss4
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(prompt_embeds_org, 0.1)
+        torch.nn.utils.clip_grad_norm_(prompt_embeds_org, 1)
         # torch.nn.utils.clip_grad_norm_(latents, 0.1)
         optimizer.step()
         optimizer.zero_grad()
