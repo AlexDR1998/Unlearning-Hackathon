@@ -46,11 +46,8 @@ def get_model_unlearnt(model_path = "./unlearnt_model/snapshots/38e10e5e71e8fbf7
     scheduler = pipe.scheduler
     return vae, unet, image_processor, scheduler, pipe
 
-### Diffusion Classifier
 from tqdm import tqdm
 import torch.nn.functional as F
-
-
 import sys
 import os
 from contextlib import contextmanager
@@ -70,7 +67,7 @@ def suppress_stdout():
 
 def main():
     tr = 1
-    filename = "contrastive_dog_to_table"
+    filename = "contrastive_udog_to_dog"
     neg_target_prompt = 'empty, blank, simple, single color, blurry'
     target_prompt = 'dog'
     initial_prompt = "dog"
@@ -84,7 +81,7 @@ def main():
     batch_size = 1
     vae, unet, image_processor, scheduler, pipe = get_model_full(model_id, device)
     uvae, uunet, uimage_processor, uscheduler, upipe = get_model_unlearnt(unlearnt_model_path, device=device)
-    del uvae, uimage_processor, uscheduler, upipe # only uunet is useful
+    del vae, image_processor, scheduler, pipe # only uunet is useful
     
     target_prompt_embed = pipe.encode_prompt(target_prompt, device, 1, False)[0].detach()
     neg_target_prompt_embed = pipe.encode_prompt(neg_target_prompt, device, 1, False)[0].detach()
@@ -93,7 +90,7 @@ def main():
     # print("Attack target class:", classifier_model.config.id2label[atk_target])
 
 
-    newPipe = OurPipe(pipe.vae, pipe.text_encoder, pipe.tokenizer, pipe.unet, pipe.scheduler, pipe.safety_checker, pipe.feature_extractor, pipe.image_encoder, requires_safety_checker=False)
+    unewPipe = OurPipe(upipe.vae, upipe.text_encoder, upipe.tokenizer, upipe.unet, upipe.scheduler, upipe.safety_checker, upipe.feature_extractor, upipe.image_encoder, requires_safety_checker=False)
 
     vae_scale_factor = 2 ** (len(vae.config.block_out_channels) - 1)
     height = 512
@@ -112,7 +109,7 @@ def main():
         prompt_embeds = prompt_embeds_org.repeat(batch_size, 1, 1)
         
         with suppress_stdout():
-            out = newPipe(prompt_embeds=prompt_embeds, latents=latents, num_inference_steps=num_inference_steps, output_type='latent').images
+            out = unewPipe(prompt_embeds=prompt_embeds, latents=latents, num_inference_steps=num_inference_steps, output_type='latent').images
 
         im = vae.decode(out / vae.config.scaling_factor,return_dict=False)[0].to('cpu')
         im = im/2 + 0.5
@@ -131,10 +128,10 @@ def main():
         noisy_latents = noisy_latents.to(torch.bfloat16)
         noisy_latents = scheduler.scale_model_input(noisy_latents, ts)
 
-        noise_estimates = uunet(noisy_latents, ts, 
+        noise_estimates = unet(noisy_latents, ts, 
                                encoder_hidden_states = target_prompt_embed.repeat(classifier_sample_number, 1, 1)
                                ).sample
-        neg_noise_estimates = uunet(noisy_latents, ts, 
+        neg_noise_estimates = unet(noisy_latents, ts, 
                                    encoder_hidden_states = neg_target_prompt_embed.repeat(classifier_sample_number, 1, 1)
                                    ).sample
         loss = F.mse_loss(noise_estimates, noise) - F.mse_loss(neg_noise_estimates, noise)
