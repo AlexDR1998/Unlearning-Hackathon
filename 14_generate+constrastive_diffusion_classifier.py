@@ -1,8 +1,3 @@
-'''
-THIS IS TO TRY TO PLUG IN THE DIFFUSION CLASSIFICATION PAPER CODE
-THIS IS UNFINISHED AND CURRENTLY ABANDONED, DUE TO A SIMPLER PIPELINE USED
-'''
-
 import os
 os.environ["HF_HOME"] = "/scratch/space1/ic084/unlearning/Unlearning-Hackathon/model"
 os.environ['MPLCONFIGDIR'] = "/scratch/space1/ic084/unlearning/Unlearning-Hackathon/model"
@@ -21,10 +16,18 @@ from diffuser_with_grad import *
 
 
 def get_model_full(model_id="OFA-Sys/small-stable-diffusion-v0", device="cuda",ftype=torch.bfloat16):
-    pipe = StableDiffusionPipeline.from_pretrained(model_id,
-                                                   torch_dtype=ftype, 
-                                                   cache_dir='./model/', 
-                                                   local_files_only=True
+    # pipe = StableDiffusionPipeline.from_pretrained(model_id,
+    #                                                torch_dtype=ftype, 
+    #                                                cache_dir='./model/', 
+    #                                                local_files_only=True
+    #                                                )
+    model_path = "./unlearnt_model/snapshots/38e10e5e71e8fbf717a47a81e7543cd01c1a8140"
+    pipe = StableDiffusionPipeline.from_pretrained(model_path,
+                                                   torch_dtype=ftype,
+                                                   use_safetensors=False,
+                                                   safety_checker=None,
+                                                   requires_safety_checker=False,
+                                                   local_files_only=True,
                                                    )
     pipe.to(device)
     vae = pipe.vae
@@ -32,6 +35,7 @@ def get_model_full(model_id="OFA-Sys/small-stable-diffusion-v0", device="cuda",f
     image_processor = pipe.image_processor
     scheduler = pipe.scheduler
     return vae, unet, image_processor, scheduler, pipe
+    
 
 
 
@@ -150,9 +154,9 @@ def suppress_stdout():
 
 def main():
     tr = 1
-    filename = "contrastive_apple"
-    neg_target_prompt = 'empty, blank, simple, single color, lacking'
-    target_prompt = 'apple, 4k'
+    filename = "contrastive_dog_unlearnt"
+    neg_target_prompt = 'empty, blank, simple, single color, blurry'
+    target_prompt = 'dog'
     ITERATIONS = 30
     num_inference_steps = 10
     
@@ -177,13 +181,13 @@ def main():
     shape = (1, unet.config.in_channels, int(height) // vae_scale_factor, int(width) // vae_scale_factor)
     
     latents = randn_tensor(shape, generator=None, device=device, dtype=torch.bfloat16)
-    prompt_embeds_org = pipe.encode_prompt('banana, 4k', device, 1, False)[0].detach()
+    prompt_embeds_org = pipe.encode_prompt('dog', device, 1, False)[0].detach()
     # latents.requires_grad = True
     prompt_embeds_org.requires_grad = True
 
     optimizer = torch.optim.NAdam([prompt_embeds_org], lr=0.01)
 
-    classifier_sample_number = 10
+    classifier_sample_number = 20
     for i in tqdm(range(ITERATIONS)):
         prompt_embeds = prompt_embeds_org.repeat(batch_size, 1, 1)
         
@@ -213,7 +217,7 @@ def main():
         neg_noise_estimates = unet(noisy_latents, ts, 
                                    encoder_hidden_states = neg_target_prompt_embed.repeat(classifier_sample_number, 1, 1)
                                    ).sample
-        loss = F.mse_loss(noise_estimates, noise) - 2*F.mse_loss(neg_noise_estimates, noise)
+        loss = F.mse_loss(noise_estimates, noise) - F.mse_loss(neg_noise_estimates, noise)
         tqdm.write(f'Loss: {loss.item()}')
 
         loss.backward()
