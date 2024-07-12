@@ -92,7 +92,7 @@ def main():
     initial_prompt = 'dog'
     random_start = False
     target_prompt = 'dog'
-    LEARN_RATE = 0.03
+    LEARN_RATE = 0.02
     ITERATIONS = 30
     atk_targets = [160, 193, 181, 239, 156, 232, 182, 195, 233, 215, 151, 236, 167, 217, 248, 245, 235, 210, 246, 257, 238, 173, 213, 184, 221, 170, 171, 152, 183, 208, 189, 255, 204, 153, 268, 256, 185, 174, 186, 229, 154, 263, 259, 234, 247, 176, 258, 199, 177, 190, 230, 155, 250, 179, 220, 244, 200, 166, 178, 218, 203, 187]
     num_inference_steps = 20
@@ -147,7 +147,7 @@ def main():
         plt.savefig(f'ims/out_{filename}_{tr}_{i}.png', bbox_inches='tight', pad_inches=0)
         prediction = predict_class(outVae,classifier_model)
         logits = prediction.logits
-        loss1 = torch.tensor([torch.nn.functional.cross_entropy(logits, torch.tensor(batch_size * [tar]).to(device), reduction='mean') for tar in atk_targets]).mean()
+        loss1 = 0.1 * torch.tensor([torch.nn.functional.cross_entropy(logits, torch.tensor(batch_size * [tar]).to(device), reduction='mean') for tar in atk_targets]).mean()
 
         noise = torch.randn((classifier_sample_number,*latents.shape[1:]), device=device, dtype=torch.bfloat16)
         
@@ -171,7 +171,7 @@ def main():
         tqdm.write(f'Loss: {loss1.item()} + {loss2.item()} + {loss3.item()} + {loss4.item()} = {loss1.item() + loss2.item() + loss3.item() + loss4.item()}')
         loss = loss1 + loss2 + loss3 + loss4
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(prompt_embeds_org, 1)
+        torch.nn.utils.clip_grad_norm_(prompt_embeds_org, 0.1)
         # torch.nn.utils.clip_grad_norm_(latents, 0.1)
         optimizer.step()
         optimizer.zero_grad()
