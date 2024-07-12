@@ -137,7 +137,7 @@ def main():
         with suppress_stdout():
             out = newPipe(prompt_embeds=prompt_embeds, latents=latents, num_inference_steps=num_inference_steps, output_type='latent').images
 
-        outVae = vae.decode(out / vae.config.scaling_factor,return_dict=False)[0]
+        outVae = uvae.decode(out / uvae.config.scaling_factor,return_dict=False)[0]
         im = outVae.to('cpu')
         im = im/2 + 0.5
         im = im.clamp(0, 1)
