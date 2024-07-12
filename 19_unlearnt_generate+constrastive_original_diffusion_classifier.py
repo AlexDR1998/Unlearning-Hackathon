@@ -83,8 +83,8 @@ def main():
     uvae, uunet, uimage_processor, uscheduler, upipe = get_model_unlearnt(unlearnt_model_path, device=device)
     del vae, image_processor, scheduler, pipe # only uunet is useful
     
-    target_prompt_embed = pipe.encode_prompt(target_prompt, device, 1, False)[0].detach()
-    neg_target_prompt_embed = pipe.encode_prompt(neg_target_prompt, device, 1, False)[0].detach()
+    target_prompt_embed = upipe.encode_prompt(target_prompt, device, 1, False)[0].detach()
+    neg_target_prompt_embed = upipe.encode_prompt(neg_target_prompt, device, 1, False)[0].detach()
     
     # classifier_model = get_classifier(classifier_id)
     # print("Attack target class:", classifier_model.config.id2label[atk_target])
@@ -92,13 +92,13 @@ def main():
 
     unewPipe = OurPipe(upipe.vae, upipe.text_encoder, upipe.tokenizer, upipe.unet, upipe.scheduler, upipe.safety_checker, upipe.feature_extractor, upipe.image_encoder, requires_safety_checker=False)
 
-    vae_scale_factor = 2 ** (len(vae.config.block_out_channels) - 1)
+    vae_scale_factor = 2 ** (len(uvae.config.block_out_channels) - 1)
     height = 512
     width = 512
     shape = (1, unet.config.in_channels, int(height) // vae_scale_factor, int(width) // vae_scale_factor)
     
     latents = randn_tensor(shape, generator=None, device=device, dtype=torch.bfloat16)
-    prompt_embeds_org = pipe.encode_prompt(initial_prompt, device, 1, False)[0].detach()
+    prompt_embeds_org = upipe.encode_prompt(initial_prompt, device, 1, False)[0].detach()
     # latents.requires_grad = True
     prompt_embeds_org.requires_grad = True
 
@@ -111,7 +111,7 @@ def main():
         with suppress_stdout():
             out = unewPipe(prompt_embeds=prompt_embeds, latents=latents, num_inference_steps=num_inference_steps, output_type='latent').images
 
-        im = vae.decode(out / vae.config.scaling_factor,return_dict=False)[0].to('cpu')
+        im = uvae.decode(out / uvae.config.scaling_factor,return_dict=False)[0].to('cpu')
         im = im/2 + 0.5
         im = im.clamp(0, 1)
         # tqdm.write(f'im range: {im.min()}, {im.max()}')
@@ -121,12 +121,12 @@ def main():
 
         noise = torch.randn((classifier_sample_number,*latents.shape[1:]), device=device, dtype=torch.bfloat16)
         
-        ts = torch.randint(0, scheduler.num_train_timesteps, (classifier_sample_number,)).to('cuda')
-        cumprod = scheduler.alphas_cumprod.to('cuda')
+        ts = torch.randint(0, uscheduler.num_train_timesteps, (classifier_sample_number,)).to('cuda')
+        cumprod = uscheduler.alphas_cumprod.to('cuda')
 
         noisy_latents = out * cumprod[ts].view(-1, 1, 1, 1)**0.5 + noise * (1 - cumprod[ts]).view(-1, 1, 1, 1)**0.5
         noisy_latents = noisy_latents.to(torch.bfloat16)
-        noisy_latents = scheduler.scale_model_input(noisy_latents, ts)
+        noisy_latents = uscheduler.scale_model_input(noisy_latents, ts)
 
         noise_estimates = unet(noisy_latents, ts, 
                                encoder_hidden_states = target_prompt_embed.repeat(classifier_sample_number, 1, 1)
@@ -144,7 +144,7 @@ def main():
         optimizer.step()
         optimizer.zero_grad()
 
-    out = newPipe(prompt_embeds=prompt_embeds, latents=latents, num_inference_steps=num_inference_steps).images
+    out = unewPipe(prompt_embeds=prompt_embeds, latents=latents, num_inference_steps=num_inference_steps).images
     im = out.to('cpu')
     plt.imshow(im[0].float().detach().permute(1, 2, 0).numpy())
     plt.axis('off')
