@@ -77,7 +77,7 @@ def main():
     random_start = False
     target_prompt = 'dog'
     LEARN_RATE = 0.05
-    ITERATIONS = 30
+    ITERATIONS = 20
     atk_targets = [160, 193, 181, 239, 156, 232, 182, 195, 233, 215, 151, 236, 167, 217, 248, 245, 235, 210, 246, 257, 238, 173, 213, 184, 221, 170, 171, 152, 183, 208, 189, 255, 204, 153, 268, 256, 185, 174, 186, 229, 154, 263, 259, 234, 247, 176, 258, 199, 177, 190, 230, 155, 250, 179, 220, 244, 200, 166, 178, 218, 203, 187]
     num_inference_steps = 30
     
@@ -111,7 +111,7 @@ def main():
     optimizer = torch.optim.NAdam([prompt_embeds_org], lr=LEARN_RATE)
     lr_scheduler = get_cosine_schedule_with_warmup(optimizer, num_warmup_steps=3, num_training_steps=ITERATIONS)    
 
-    classifier_sample_number = 20
+    classifier_sample_number = 10
     for i in tqdm(range(ITERATIONS)):
         prompt_embeds = prompt_embeds_org.repeat(batch_size, 1, 1)
         
